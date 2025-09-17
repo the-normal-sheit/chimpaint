@@ -9,6 +9,11 @@
       function $(a){return document.getElementById(a);}
       let canvas = $('content');
       let ctx = canvas.getContext('2d');
+      let filters = {
+        blot:(imgData)=>{
+          ctx.filter = 'blur(2px) brightness(130%) contrast(50%)';
+        }
+      }
       function RGB(){
         return ctx.getImageData(0,0,canvas.width,canvas.height);
       }
