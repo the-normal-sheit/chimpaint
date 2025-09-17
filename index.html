@@ -21,6 +21,36 @@
         else ctx2.putImageData(imgData,0,0);
         return canvasRGB(ctx2);
       }
+      function levenshteinDistance(str1, str2) {
+        const m = str1.length;
+        const n = str2.length;
+
+        // Create a matrix to store the distances
+        const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+        // Initialize the first row and column
+        for (let i = 0; i <= m; i++) {
+          dp[i][0] = i; // Cost of transforming str1[0...i-1] to an empty string (deletions)
+        }
+        for (let j = 0; j <= n; j++) {
+          dp[0][j] = j; // Cost of transforming an empty string to str2[0...j-1] (insertions)
+        }
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1; // Substitution 
+
+            dp[i][j] = Math.min(
+              dp[i - 1][j] + 1, // Deletion
+              dp[i][j - 1] + 1, // Insertion
+              dp[i - 1][j - 1] + cost // Substitution
+            );
+          }
+        }
+
+        return dp[m][n];
+      } 
+      /*I ALREADY IMPLEMENTED THE LEVENROSENGOLDMANALTMANBERGENSTEIN FUNCTION 3 BILLION FUCKING TIMES. 
+      VIBE CODED SO I DONT HAVE TO DO IT AGAIN*/
       function drawImg(src){
         ctx.clearRect(0,0,canvas.width,canvas.height);
         if(typeof src == 'string'){
@@ -41,7 +71,22 @@
         }
       }
       let flightReacts = drawImg('./flightreacts.jpeg');
-      drawImg(applyFilter(flightReacts,'blur(2px) contrast(150%)'));
+      drawImg(applyFilter(flightReacts,'blur(0px) contrast(150%)'));
+      class Visualchimp {
+        constructor(temperature=0.3){
+          this.config = {
+            temperature:temperature
+          }
+        }
+        alignSimilar(input,corpus){
+          for(let i=0;i<corpus.length;i++){
+            
+          }
+        }
+      }
+      let data = [
+        {label:'flight reacts',src:'./data/flightreacts.png'}
+      ]
     </script>
   </body>
 </html>
