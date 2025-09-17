@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    
+  </head>
+  <body>
+    <canvas id="content" width="400" height="300"></canvas>
+    <script>
+      function $(a){return document.getElementById(a);}
+      let canvas = $('content');
+      let ctx = canvas.getContext('2d');
+      function drawImg(src){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        let newImg = new Image();
+        newImg.src = src;
+        newImg.onload = () => {
+          ctx.drawImage(newImg,0,0,400,300);
+        }
+      }
+      drawImg('./flightreacts.png');
+    </script>
+  </body>
+</html>
