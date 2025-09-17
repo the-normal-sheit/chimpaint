@@ -5,12 +5,18 @@
   </head>
   <body>
     <canvas id="content" width="400" height="300"></canvas>
+    <canvas id="filterzone" width="400" height="300"></canvas>
     <script>
       function $(a){return document.getElementById(a);}
       let canvas = $('content');
       let ctx = canvas.getContext('2d',{ willReadFrequently: true });
       function canvasRGB(){
         return ctx.getImageData(0,0,canvas.width,canvas.height);
+      }
+      function applyFilter(imgData,filterString){
+        let canvas2 = $('filterzone');
+        let ctx2 = canvas.getContext('2d',{willReadFrequently:true});
+        ctx2.drawImage(imgData,0,0,400,300);
       }
       function drawImg(src){
         ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -28,6 +34,7 @@
         blot:(imgData,intensity = 1)=>{
           ctx.filter = 'blur('+(2*intensity).toString()+'px) contrast('+(100*intensity).toString()+'%)';
           drawImg(imgData);
+          
         }
       }
       drawImg('./flightreacts.jpeg');
