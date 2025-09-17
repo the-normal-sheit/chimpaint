@@ -9,23 +9,30 @@
       function $(a){return document.getElementById(a);}
       let canvas = $('content');
       let ctx = canvas.getContext('2d');
-      let filters = {
-        blot:(imgData)=>{
-          ctx.filter = 'blur(2px) brightness(130%) contrast(50%)';
-        }
-      }
-      function RGB(){
+      function canvasRGB(){
         return ctx.getImageData(0,0,canvas.width,canvas.height);
       }
       function drawImg(src){
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        let newImg = new Image();
-        newImg.src = src;
-        newImg.onload = () => {
-          ctx.drawImage(newImg,0,0,400,300);
+        if(typeof src == 'string'){
+          let newImg = new Image();
+          newImg.src = src;
+          newImg.onload = () => {
+            ctx.drawImage(newImg,0,0,400,300);
+          }
+        } else {
+          ctx.putImageData(src,0,0);
+        }
+      }
+      let filters = {
+        blot:(imgData)=>{
+          ctx.filter = 'blur(2px) brightness(130%) contrast(150%)';
+          drawImg(imgData);
+          ctx.filter = none;
         }
       }
       drawImg('./flightreacts.jpeg');
+      filters.blot(canvasRGB());
     </script>
   </body>
 </html>
