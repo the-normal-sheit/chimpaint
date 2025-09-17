@@ -10,13 +10,16 @@
       function $(a){return document.getElementById(a);}
       let canvas = $('content');
       let ctx = canvas.getContext('2d',{ willReadFrequently: true });
-      function canvasRGB(){
-        return ctx.getImageData(0,0,canvas.width,canvas.height);
+      function canvasRGB(currentContext = ctx){
+        return currentContext.getImageData(0,0,canvas.width,canvas.height);
       }
       function applyFilter(imgData,filterString){
         let canvas2 = $('filterzone');
         let ctx2 = canvas.getContext('2d',{willReadFrequently:true});
-        ctx2.drawImage(imgData,0,0,400,300);
+        ctx2.filter = filterString;
+        if(!(imgData instanceOf Uint8array))ctx2.drawImage(imgData,0,0,canvas2.width,canvas2.height);
+        else ctx2.putImageData(imgData,0,0);
+        return canvasRGB(ctx2);
       }
       function drawImg(src){
         ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -26,19 +29,19 @@
           newImg.onload = () => {
             ctx.drawImage(newImg,0,0,400,300);
           }
+          return newImg;
         } else {
           ctx.putImageData(src,0,0);
         }
       }
       let filters = {
         blot:(imgData,intensity = 1)=>{
-          ctx.filter = 'blur('+(2*intensity).toString()+'px) contrast('+(100*intensity).toString()+'%)';
+          ctx.filter = 'blur(2px) contrast(150%)';
           drawImg(imgData);
-          
         }
       }
-      drawImg('./flightreacts.jpeg');
-      filters.blot(canvasRGB());
+      let flightReacts = drawImg('./flightreacts.jpeg');
+      drawImg(applyFilter(flightReacts,'blur(2px) contrast(150%)'));
     </script>
   </body>
 </html>
