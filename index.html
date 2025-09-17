@@ -8,7 +8,7 @@
     <script>
       function $(a){return document.getElementById(a);}
       let canvas = $('content');
-      let ctx = canvas.getContext('2d');
+      let ctx = canvas.getContext('2d',{ willReadFrequently: true });
       function canvasRGB(){
         return ctx.getImageData(0,0,canvas.width,canvas.height);
       }
