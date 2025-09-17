@@ -25,10 +25,9 @@
         }
       }
       let filters = {
-        blot:(imgData)=>{
-          ctx.filter = 'blur(2px) brightness(130%) contrast(150%)';
+        blot:(imgData,intensity = 1)=>{
+          ctx.filter = 'blur('+(2*intensity).toString()+'px) brightness('+(100*intensity).toString()+'%) contrast(%)';
           drawImg(imgData);
-          ctx.filter = 'none';
         }
       }
       drawImg('./flightreacts.jpeg');
