@@ -9,40 +9,44 @@
     <script>
       function $(a){return document.getElementById(a);}
       let canvas = $('content');
-      let ctx = canvas.getContext('2d',{ willReadFrequently: true });
+      let ctx = canvas.getContext('2d');
       function canvasRGB(currentContext = ctx){
         return currentContext.getImageData(0,0,canvas.width,canvas.height);
       }
+      function formLayer(resolution){
+        let result = [];
+        for(let i=0;i<resolution;i++){
+          result = [...result,{weight:Math.random(),bias:Math.random()}];
+        }
+        return result;
+      }
       function applyFilter(imgData,filterString){
         let canvas2 = $('filterzone');
-        let ctx2 = canvas.getContext('2d',{willReadFrequently:true});
+        let ctx2 = canvas.getContext('2d');
         ctx2.filter = filterString;
         if(!(imgData instanceof Uint8Array))ctx2.drawImage(imgData,0,0,canvas2.width,canvas2.height);
         else ctx2.putImageData(imgData,0,0);
         return canvasRGB(ctx2);
       }
-      function stringErr(str1, str2) {
+      function levenshteinDistance(str1, str2) {
         const m = str1.length;
         const n = str2.length;
-
-        // Create a matrix to store the distances
         const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
 
-        // Initialize the first row and column
         for (let i = 0; i <= m; i++) {
-          dp[i][0] = i; // Cost of transforming str1[0...i-1] to an empty string (deletions)
+          dp[i][0] = i; 
         }
         for (let j = 0; j <= n; j++) {
-          dp[0][j] = j; // Cost of transforming an empty string to str2[0...j-1] (insertions)
+          dp[0][j] = j;
         }
         for (let i = 1; i <= m; i++) {
           for (let j = 1; j <= n; j++) {
-            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1; // Substitution 
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1; 
 
             dp[i][j] = Math.min(
-              dp[i - 1][j] + 1, // Deletion
-              dp[i][j - 1] + 1, // Insertion
-              dp[i - 1][j - 1] + cost // Substitution
+              dp[i - 1][j] + 1, 
+              dp[i][j - 1] + 1, 
+              dp[i - 1][j - 1] + cost 
             );
           }
         }
@@ -51,8 +55,7 @@
       } 
       /*I ALREADY IMPLEMENTED THE LEVENROSENGOLDMANALTMANBERGENSTEIN FUNCTION 3 BILLION FUCKING TIMES. 
       VIBE CODED SO I DONT HAVE TO DO IT AGAIN*/
-      function imgOut(src){
-        ctx.clearRect(0,0,canvas.width,canvas.height);
+      function drawImg(src){
         if(typeof src == 'string'){
           let newImg = new Image();
           newImg.src = src;
@@ -64,32 +67,106 @@
           ctx.putImageData(src,0,0);
         }
       }
+      function edgeify(threshold=160){
+        
+      let pixels = canvasRGB(ctx);
+      for(let i=0;i<pixels.data.length;i+=4){
+        if(pixels.data[i] < threshold){
+          pixels.data[i]=0;
+          pixels.data[i+1]=0;
+          pixels.data[i+2]=0;
+          pixels.data[i+3]=0;
+        }
+      }
+      return pixels;
+      }
+      function etchify(threshold=160){
+        
+      let pixels = canvasRGB(ctx);
+      for(let i=0;i<pixels.data.length;i+=4){
+        if(pixels.data[i] > threshold){
+          pixels.data[i]=0;
+          pixels.data[i+1]=0;
+          pixels.data[i+2]=0;
+          pixels.data[i+3]=0;
+        }
+      }
+      return pixels;
+      }
       let filters = {
         blot:(imgData,intensity = 1)=>{
           ctx.filter = 'blur(2px) contrast(150%)';
-          imgOut(imgData);
+          drawImg(imgData);
         }
       }
-      let flightReacts = imgOut('./flightreacts.jpeg');
-      imgOut(applyFilter(flightReacts,'blur(0px) contrast(150%)'));
-
-      let data = [
-        {label:'flight reacts',src:'./data/flightreacts.png'}
-      ]
+      
       class Visualchimp {
-        constructor(temperature=0.3){
+        constructor(temperature=0.3,resolution=80,layers=5){
           this.config = {
-            temperature:temperature
+            temperature:temperature,
+            resolution:resolution,
+            layers:layers
+          }
+
+          this.network = [];
+          for(let i=0;i<this.config.layers;i++){
+            this.network = [...this.network,formLayer(this.config.resolution)];
           }
         }
         out(prompt){
-          let scores = [];
-          for(let i=0;i<data.length;i++){
-            let dataChunk = data[i];
-            scores.push({data:dataChunk,score:stringErr(datachunk.label,prompt)});
+          prompt = prompt.substring(0,this.config.resolution);
+          prompt = prompt.replaceAll(" ","+");
+          prompt = prompt.split("");
+          let chars = "abcdefghijklmnopqrstuvwxyz0123456789.+";
+
+          let indexes = [];
+          for(let i=0;i<prompt.length;i++){
+            if(!chars.includes(prompt[i]))prompt.splice(prompt.indexOf(prompt[i]),1);
+          }
+          let result = [];
+          for(let indexLayer=0;indexLayer<this.network.length;indexLayer++){
+            let layer = this.network[indexLayer];
+            result = [...result,[]];
+            layer.forEach((vector,index) => {
+              let currentChar = chars.indexOf(prompt[indexLayer])/chars.length;
+              if(currentChar !== undefined && currentChar !== -1){
+                let lastWeight = this.network[indexLayer-1];
+                if(lastWeight == undefined)lastWeight={weight:0,bias:0};
+                else lastWeight = lastWeight[index];
+                console.log(lastWeight);
+                let sigmoid = 
+                1
+                /
+                (1+ Math.E ** (
+                  ((vector.bias+(vector.weight*currentChar))
+                  +
+                  (lastWeight.bias+(lastWeight.weight*currentChar)))
+                ));
+                result[indexLayer].push(
+                  sigmoid
+                );
+              } else {
+                result[indexLayer].push(0);
+              }
+            });
+          }
+          return result;
+        }
+        draw(netInput){
+          let starter = netInput.slice(0,netInput.length/2);
+          let edgeRefine = netInput.slice(netInput.length/2,netInput.length);
+          for(let i=0;i<starter.length;i+=10){
+            
           }
         }
       }
+      let monky = new Visualchimp();
+      console.log(monky.out("flight reacts"))
+
+      let flightReacts = drawImg('./data/flightreacts.steve.png');
+
+      drawImg(applyFilter(flightReacts,'grayscale(60%) blur(2px) contrast(300%)'));
+      window.onload = () => {drawImg(etchify(100));}
     </script>
   </body>
 </html>
