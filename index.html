@@ -2,8 +2,13 @@
 <html>
   <head>
     <title>Chimpart Experiment Grounds: By Monky-ai</title>
+    <script src="network.js"></script>
   </head>
   <body>
+    <input type="text" placeholder="prompt" id="prompt">
+    <button onclick="monky.draw(monky.out($('prompt').value));">submit</button>
+    <br>
+    <button onclick="trainLoop();">train</button>
     <canvas id="content" width="400" height="300"></canvas>
     <canvas id="filterzone" width="400" height="300"></canvas>
     <script>
@@ -93,6 +98,15 @@
       }
       return pixels;
       }
+      function rgbErr(rgb1,rgb2){
+        let result = 0;
+        for(let i=0;i<rgb1.data.length;i++){
+          result+=((rgb2.data[i]-rgb1.data[i])**2);
+        }
+        if(result >= 1)result = "0."+result.toString();
+        result = parseFloat(result);
+        return result;
+      }
       let filters = {
         blot:(imgData,intensity = 1)=>{
           ctx.filter = 'blur(2px) contrast(150%)';
@@ -101,12 +115,13 @@
       }
       
       class Visualchimp {
-        constructor(temperature=0.3,resolution=80,layers=5){
+        constructor(temperature=0.3,resolution=700,layers=5){
           this.config = {
             temperature:temperature,
             resolution:resolution,
             layers:layers
           }
+          this.goodNets = [];
 
           this.network = [];
           for(let i=0;i<this.config.layers;i++){
@@ -133,7 +148,6 @@
                 let lastWeight = this.network[indexLayer-1];
                 if(lastWeight == undefined)lastWeight={weight:0,bias:0};
                 else lastWeight = lastWeight[index];
-                console.log(lastWeight);
                 let sigmoid = 
                 1
                 /
@@ -153,20 +167,118 @@
           return result;
         }
         draw(netInput){
-          let starter = netInput.slice(0,netInput.length/2);
-          let edgeRefine = netInput.slice(netInput.length/2,netInput.length);
-          for(let i=0;i<starter.length;i+=10){
-            
+          let starter = netInput[4].slice(0,netInput[4].length/2);
+          let edgeRefine = netInput[4].slice((netInput[4].length/2),netInput[4].length);
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          
+          for(let i=0;i<starter.length;i+=8){
+            let rgb = [starter[i+3]*255,starter[i+4]*255,starter[i+5]*255,starter[i+6]*255];
+            let values = [starter[i],starter[i+1],starter[i+2],starter[i+3],starter[i+4],starter[i+5],starter[i+6]];
+            let flag = false;
+            for(let r=0;r<7;r++){if(values[r]==undefined)flag=true;}
+            if(flag)break;
+            ctx.filter = "blur("+(starter[i+7]*10).toString()+"px)";
+            ctx.beginPath();
+            ctx.arc(starter[i]*400,starter[i+1]*300,starter[i+2]*(50),0,2*Math.PI);
+            ctx.fillStyle = "rgba("+rgb.join(",")+")";
+            ctx.fill();
+            ctx.filter = "none";
+          }
+          for(let i=0;i+6<edgeRefine.length;i+=8){
+            let rgb = [edgeRefine[i+3]*255,edgeRefine[i+4]*255,edgeRefine[i+5]*255,starter[i+6]*255];
+            let values = [edgeRefine[i],edgeRefine[i+1],edgeRefine[i+2],edgeRefine[i+3],edgeRefine[i+4],edgeRefine[i+5],edgeRefine[i+6]];
+            let flag = false;
+            for(let r=0;r<7;r++){if(values[r]==undefined)flag=true;}
+            if(flag)break;
+            ctx.beginPath();
+            ctx.arc(edgeRefine[i]*400,edgeRefine[i+1]*300,edgeRefine[i+2]*(20),0,2*Math.PI);
+            ctx.fillStyle = "rgba("+rgb.join(",")+")";
+            ctx.fill();
           }
         }
+        mutate(data,newNetwork=Array.from(this.network)){
+          let currentNetwork = newNetwork;
+          let totalErr = 0;
+          let testMonky = new Visualchimp(this.config.temperature,this.config.resolution);
+          testMonky.network = currentNetwork;
+          data.forEach(io => {
+            drawImg(io.output);
+            let testRGB = canvasRGB();
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            this.draw(testMonky.out(io.input));
+            let monkyRGB = canvasRGB();
+            totalErr+=rgbErr(monkyRGB,testRGB);
+          });
+          currentNetwork.forEach((networkLayer,index) => {
+            networkLayer.forEach((weight,weightIndex) => {
+              let c = Math.random();
+              let operations = ["+","*"];
+              let operation = operations[Math.floor(Math.random() * 2)];
+              let shift = 0;
+              let shift2 = Math.floor(Math.random() * (3-1))+1;
+              if(c > 0.25)shift = Math.random()/shift2;
+              if(c > 0.5)shift = Math.random();
+              if(c > 0.75)shift = Math.random()*shift2;
+              c = Math.random();
+              if(c < 0.5)shift = 0-shift;
+
+              if(operation == "+")weight.weight = weight.weight+shift;
+              else weight.weight = weight.weight*shift;
+
+
+              operation = operations[Math.floor(Math.random() * 2)];
+              shift = 0;
+              shift2 = Math.floor(Math.random() * (3-1))+1;
+              if(c > 0.25)shift = Math.random()/shift2;
+              if(c > 0.5)shift = Math.random();
+              if(c > 0.75)shift = Math.random()*shift2;
+              c = Math.random();
+              if(c < 0.5)shift = 0-shift;
+              if(weight.weight > 1){weight.weight = 1;weight.weight-=Math.abs(shift);}
+              if(weight.bias > 1){weight.bias = 1;weight.bias-=Math.abs(shift);}
+              if(weight.weight < -1){weight.weight = -1;weight.weight+=Math.abs(shift);}
+              if(weight.bias < -1){weight.bias = -1;weight.bias+=Math.abs(shift);}
+              if(operation == "+")weight.bias+=shift;
+              else weight.bias*=shift;
+              currentNetwork[index][weightIndex] = {weight:weight.weight,bias:weight.bias};
+            });
+          });
+          return {network:currentNetwork,totalError:totalErr}
+        }
+        evolve(data,iterations,resolution){
+          let winners = [];
+          let scores = [];
+          for(let iteration=0;iteration<iterations;iteration++){
+            scores = [];
+            for(let block=0;block<resolution;block++){
+              let baseNetwork = iteration === 0 ? this.network : winners[Math.floor(Math.random()*7)].network;
+              let currentWinner = winners[block] == undefined ? baseNetwork : winners[block].network;
+              let mutation = this.mutate(data,currentWinner);
+              scores.push(mutation);
+            }
+            scores.sort((a,b)=>{return a.totalError-b.totalError});
+            console.log(JSON.stringify(scores));
+            scores = scores.slice(0,7); 
+            winners = scores;
+            let errorSum = 0;
+            winners.forEach(winner => {errorSum+=winner.totalError;});
+            console.log(`Generation: ${iteration}, Total Error: ${errorSum}`);
+          }
+          this.goodNets = winners;
+          return winners;
+        }
       }
-      let monky = new Visualchimp();
-      console.log(monky.out("flight reacts"))
-
-      let flightReacts = drawImg('./data/flightreacts.steve.png');
-
-      drawImg(applyFilter(flightReacts,'grayscale(60%) blur(2px) contrast(300%)'));
-      window.onload = () => {drawImg(etchify(100));}
+      let monky = new Visualchimp(0.3,1000);
+      function trainLoop(){
+        monky.network = monky.evolve([{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}],100,28)[0].network;
+      }
+      window.onload = () => {
+        //monky.network = monky.evolve([{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}],100,100)[0].network;
+        monky.network = globalNetwork;
+        setTimeout(() => {
+          monky.draw(monky.out("flightreacts steve"));
+        },100);
+      }
     </script>
   </body>
 </html>
