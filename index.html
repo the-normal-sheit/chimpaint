@@ -18,13 +18,6 @@
       function canvasRGB(currentContext = ctx){
         return currentContext.getImageData(0,0,canvas.width,canvas.height);
       }
-      function formLayer(resolution){
-        let result = [];
-        for(let i=0;i<resolution;i++){
-          result = [...result,{weight:Math.random(),bias:Math.random()}];
-        }
-        return result;
-      }
       function applyFilter(imgData,filterString){
         let canvas2 = $('filterzone');
         let ctx2 = canvas.getContext('2d');
@@ -33,6 +26,14 @@
         else ctx2.putImageData(imgData,0,0);
         return canvasRGB(ctx2);
       }
+      function formLayer(resolution){
+        let result = [];
+        for(let i=0;i<resolution;i++){
+          result = [...result,{weight:Math.random(),bias:Math.random()}];
+        }
+        return result;
+      }
+      
       function levenshteinDistance(str1, str2) {
         const m = str1.length;
         const n = str2.length;
