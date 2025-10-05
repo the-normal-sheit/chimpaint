@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chimpart Experiment Grounds: By Monky-ai (Optimized)</title>
+  </head>
+  <body>
+    <input type="text" placeholder="prompt" id="prompt">
+    <button onclick="monky.draw(monky.out($('prompt').value));">submit</button>
+    <br>
+    <button onclick="trainLoop();">train</button>
+    <canvas id="content" width="400" height="300"></canvas>
+    <canvas id="filterzone" width="400" height="300"></canvas>
+    <script>
+      const $ = (a) => document.getElementById(a);
+      const canvas = $('content');
+      const ctx = canvas.getContext('2d');
+      const canvas2 = $('filterzone');
+      const ctx2 = canvas2.getContext('2d');
+      
+      const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789.+";
+      const CHARS_LENGTH = CHARS.length;
+
+      function canvasRGB(currentContext = ctx) {
+        return currentContext.getImageData(0, 0, canvas.width, canvas.height);
+      }
+
+      function formLayer(resolution) {
+        const result = new Array(resolution);
+        for (let i = 0; i < resolution; i++) {
+          result[i] = {
+            weight: Math.random() * 2 - 1, // Range [-1, 1]
+            bias: Math.random() * 2 - 1
+          };
+        }
+        return result;
+      }
+
+      function drawImg(src) {
+        if (typeof src === 'string') {
+          const newImg = new Image();
+          newImg.src = src;
+          newImg.onload = () => {
+            ctx.drawImage(newImg, 0, 0, 400, 300);
+          };
+          return newImg;
+        } else {
+          ctx.putImageData(src, 0, 0);
+        }
+      }
+
+      function rgbErr(rgb1, rgb2) {
+        const data1 = rgb1.data;
+        const data2 = rgb2.data;
+        const length = data1.length;
+        let sum = 0;
+        
+        for (let i = 0; i < length; i++) {
+          const diff = data2[i] - data1[i];
+          sum += diff * diff;
+        }
+        
+        return Math.sqrt(sum) / length; // Normalize by pixel count
+      }
+
+      // Optimized sigmoid with numerical stability
+      function sigmoid(x) {
+        if (x >= 0) {
+          const z = Math.exp(-x);
+          return 1 / (1 + z);
+        } else {
+          const z = Math.exp(x);
+          return z / (1 + z);
+        }
+      }
+
+      class Visualchimp {
+        constructor(temperature = 0.3, resolution = 700, layers = 5) {
+          this.config = {
+            temperature,
+            resolution,
+            layers
+          };
+          this.goodNets = [];
+          this.network = new Array(layers);
+          
+          for (let i = 0; i < layers; i++) {
+            this.network[i] = formLayer(resolution);
+          }
+        }
+
+        out(prompt) {
+          // Sanitize and prepare prompt
+          prompt = prompt.toLowerCase()
+            .substring(0, this.config.resolution)
+            .replace(/\s/g, '+');
+          
+          const promptChars = prompt.split('').filter(c => CHARS.includes(c));
+          const result = new Array(this.network.length);
+          
+          for (let layerIdx = 0; layerIdx < this.network.length; layerIdx++) {
+            const layer = this.network[layerIdx];
+            const layerOutput = new Array(layer.length);
+            const charIdx = CHARS.indexOf(promptChars[layerIdx]);
+            const currentChar = charIdx !== -1 ? charIdx / CHARS_LENGTH : 0;
+            
+            for (let i = 0; i < layer.length; i++) {
+              const vector = layer[i];
+              let prevActivation = 0;
+              
+              if (layerIdx > 0 && result[layerIdx - 1]) {
+                prevActivation = result[layerIdx - 1][i] || 0;
+              }
+              
+              // Improved activation: weighted sum with previous layer
+              const z = vector.weight * currentChar + vector.bias + 
+                        prevActivation * this.config.temperature;
+              layerOutput[i] = sigmoid(z);
+            }
+            
+            result[layerIdx] = layerOutput;
+          }
+          
+          return result;
+        }
+
+        draw(netInput) {
+          if (!netInput || !netInput[4]) return;
+          
+          const lastLayer = netInput[4];
+          const midpoint = Math.floor(lastLayer.length / 2);
+          const starter = lastLayer.slice(0, midpoint);
+          const edgeRefine = lastLayer.slice(midpoint);
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.filter = "none";
+          
+          // Draw base shapes
+          for (let i = 0; i + 7 < starter.length; i += 8) {
+            const x = starter[i] * 400;
+            const y = starter[i + 1] * 300;
+            const radius = starter[i + 2] * 50;
+            const r = Math.floor(starter[i + 3] * 255);
+            const g = Math.floor(starter[i + 4] * 255);
+            const b = Math.floor(starter[i + 5] * 255);
+            const a = starter[i + 6];
+            const blur = starter[i + 7] * 10;
+            
+            ctx.filter = `blur(${blur}px)`;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+            ctx.fill();
+          }
+          
+          ctx.filter = "none";
+          
+          // Draw refinement shapes
+          for (let i = 0; i + 6 < edgeRefine.length; i += 8) {
+            const x = edgeRefine[i] * 400;
+            const y = edgeRefine[i + 1] * 300;
+            const radius = edgeRefine[i + 2] * 20;
+            const r = Math.floor(edgeRefine[i + 3] * 255);
+            const g = Math.floor(edgeRefine[i + 4] * 255);
+            const b = Math.floor(edgeRefine[i + 5] * 255);
+            const a = edgeRefine[i + 6];
+            
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+            ctx.fill();
+          }
+        }
+
+        mutate(data, baseNetwork = null) {
+          const currentNetwork = baseNetwork ? 
+            baseNetwork.map(layer => layer.map(n => ({...n}))) :
+            this.network.map(layer => layer.map(n => ({...n})));
+          
+          let totalErr = 0;
+          const testMonky = new Visualchimp(this.config.temperature, this.config.resolution);
+          testMonky.network = currentNetwork;
+          
+          // Calculate error
+          for (const io of data) {
+            drawImg(io.output);
+            const testRGB = canvasRGB();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.draw(testMonky.out(io.input));
+            const monkyRGB = canvasRGB();
+            totalErr += rgbErr(monkyRGB, testRGB);
+          }
+          
+          // Mutate network
+          for (let i = 0; i < currentNetwork.length; i++) {
+            const layer = currentNetwork[i];
+            for (let j = 0; j < layer.length; j++) {
+              const node = layer[j];
+              const rand = Math.random();
+              
+              // Adaptive mutation rate
+              const mutationRate = rand > 0.75 ? 0.5 : 
+                                   rand > 0.5 ? 0.1 : 
+                                   rand > 0.25 ? 0.05 : 0.01;
+              
+              const weightShift = (Math.random() * 2 - 1) * mutationRate;
+              const biasShift = (Math.random() * 2 - 1) * mutationRate;
+              
+              node.weight = Math.max(-1, Math.min(1, node.weight + weightShift));
+              node.bias = Math.max(-1, Math.min(1, node.bias + biasShift));
+            }
+          }
+          
+          return { network: currentNetwork, totalError: totalErr };
+        }
+
+        evolve(data, iterations, resolution) {
+          let winners = [{ network: this.network, totalError: Infinity }];
+          
+          for (let iter = 0; iter < iterations; iter++) {
+            const candidates = [];
+            
+            for (let i = 0; i < resolution; i++) {
+              const parentIdx = Math.floor(Math.random() * Math.min(7, winners.length));
+              const parent = winners[parentIdx].network;
+              const mutation = this.mutate(data, parent);
+              candidates.push(mutation);
+            }
+            
+            candidates.sort((a, b) => a.totalError - b.totalError);
+            winners = candidates.slice(0, 7);
+            
+            const avgError = winners.reduce((sum, w) => sum + w.totalError, 0) / winners.length;
+            console.log(`Gen ${iter}: Best=${winners[0].totalError.toFixed(2)}, Avg=${avgError.toFixed(2)}`);
+          }
+          
+          this.goodNets = winners;
+          return winners;
+        }
+      }
+
+      const monky = new Visualchimp(0.3, 1000);
+
+      function trainLoop(data, iterations = 100, resolution = 28) {
+        if (!data) data = [{ input: "flightreacts steve", output: "./flightreacts.jpeg" }];
+        monky.network = monky.evolve(data, iterations, resolution)[0].network;
+      }
+
+      window.onload = () => {
+        setTimeout(() => {
+          monky.draw(monky.out("flightreacts steve"));
+        }, 100);
+      };
+    </script>
+  </body>
+</html>
