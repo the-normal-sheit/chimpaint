@@ -1,5 +1,5 @@
 let globalNetwork = 
-    [
+    [[
         {
             "weight": -0.24892413547325548,
             "bias": 1
@@ -20008,6 +20008,8 @@ let globalNetwork =
             "weight": 0.04117794662941898,
             "bias": -0.8396433760934779
         }
+        ]
 ];
+
 
 
