@@ -269,8 +269,9 @@
         }
       }
       let monky = new Visualchimp(0.3,1000);
-      function trainLoop(){
-        monky.network = monky.evolve([{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}],100,28)[0].network;
+      function trainLoop(data,iterations=100,resolution=28){
+        if(data == undefined)data=[{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}];
+        monky.network = monky.evolve(data,iterations,resolution)[0].network;
       }
       window.onload = () => {
         //monky.network = monky.evolve([{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}],100,100)[0].network;
