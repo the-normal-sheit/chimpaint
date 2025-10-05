@@ -24,7 +24,14 @@
       function canvasRGB(currentContext = ctx) {
         return currentContext.getImageData(0, 0, canvas.width, canvas.height);
       }
-
+ function applyFilter(imgData,filterString){
+        let canvas2 = $('filterzone');
+        let ctx2 = canvas.getContext('2d');
+        ctx2.filter = filterString;
+        if(!(imgData instanceof Uint8Array))ctx2.drawImage(imgData,0,0,canvas2.width,canvas2.height);
+        else ctx2.putImageData(imgData,0,0);
+        return canvasRGB(ctx2);
+      }
       function formLayer(resolution) {
         const result = new Array(resolution);
         for (let i = 0; i < resolution; i++) {
