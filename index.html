@@ -270,7 +270,7 @@
       }
       let monky = new Visualchimp(0.3,1000);
       function trainLoop(data,iterations=100,resolution=28){
-        if(data == undefined)data=[{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}];
+        if(data == undefined)data=[{input:"flightreacts steve",output:"./flightreacts.jpeg"}];
         monky.network = monky.evolve(data,iterations,resolution)[0].network;
       }
       window.onload = () => {
