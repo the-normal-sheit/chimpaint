@@ -275,7 +275,7 @@
       }
       window.onload = () => {
         //monky.network = monky.evolve([{input:"flightreacts steve",output:"./data/flightreacts.steve.png"}],100,100)[0].network;
-        //monky.network = globalNetwork;
+        monky.network = globalNetwork;
         setTimeout(() => {
           monky.draw(monky.out("flightreacts steve"));
         },100);
