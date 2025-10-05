@@ -252,7 +252,7 @@
         if (!data) data = [{ input: "flightreacts steve", output: "./flightreacts.jpeg" }];
         monky.network = monky.evolve(data, iterations, resolution)[0].network;
       }
-  //monky.network = globalNetwork;
+  monky.network = globalNetwork;
       window.onload = () => {
         setTimeout(() => {
           monky.draw(monky.out("flightreacts steve"));
