@@ -258,7 +258,7 @@
               scores.push(mutation);
             }
             scores.sort((a,b)=>{return a.totalError-b.totalError});
-            console.log(JSON.stringify(scores));
+           
             scores = scores.slice(0,7); 
             winners = scores;
             let errorSum = 0;
