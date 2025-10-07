@@ -173,7 +173,7 @@
           ctx.clearRect(0,0,canvas.width,canvas.height);
           
           for(let i=0;i<starter.length;i+=8){
-            let rgb = [starter[i+3]*255,starter[i+4]*255,starter[i+5]*255,starter[i+6]*255];
+            let rgb = [starter[i+3]*255,starter[i+4]*255,starter[i+5]*255,starter[i+6]];
             let values = [starter[i],starter[i+1],starter[i+2],starter[i+3],starter[i+4],starter[i+5],starter[i+6]];
             let flag = false;
             for(let r=0;r<7;r++){if(values[r]==undefined)flag=true;}
