@@ -18,7 +18,7 @@
     <script src="https://unpkg.com/brain.js"></script>
 	
 	<canvas id="content" width="16" height="16" style="width:256px;height:256px;"></canvas>
-	
+	Anti Alias <input type="checkbox" id="antialias">
 	<div class="section">
 		<h3>Motion</h3>
 		<div class="controls">
@@ -202,7 +202,12 @@
 			stepMotion();
 			animationId = setTimeout(() => requestAnimationFrame(playAnimation), 1000/fps);
 		}
-
+		let aliased = false;
+		$('antialias').onclick = () => {
+			aliased = !aliased
+			if(aliased)$('content').style.imageRendering = 'pixelated';
+			else $('content').style.imageRendering = 'initial';
+		}
 		$('shift').oninput = () => {
 			frameChange = parseFloat($('shift').value);
 			$('shiftVal').textContent = frameChange.toFixed(2);
