@@ -205,7 +205,7 @@
 		let aliased = false;
 		$('antialias').onclick = () => {
 			aliased = !aliased
-			if(aliased)$('content').style.imageRendering = 'auto';
+			if(aliased)$('content').style.imageRendering = 'initial;';
 			else $('content').style.imageRendering = 'pixelated';
 		}
 		$('shift').oninput = () => {
