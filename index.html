@@ -205,8 +205,8 @@
 		let aliased = false;
 		$('antialias').onclick = () => {
 			aliased = !aliased
-			if(aliased)$('content').style.imageRendering = 'pixelated';
-			else $('content').style.imageRendering = 'initial';
+			if(aliased)$('content').style.imageRendering = 'smooth';
+			else $('content').style.imageRendering = 'pixelated';
 		}
 		$('shift').oninput = () => {
 			frameChange = parseFloat($('shift').value);
