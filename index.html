@@ -10,13 +10,16 @@
 		#content { border: 2px solid #333; image-rendering: pixelated; }
 		.section { margin: 20px 0; padding: 15px; background: #f5f5f5; border:1px solid black;border-radius: 4px; }
 		.playback-controls { display: flex; gap: 10px; align-items: center; }
+		#theVoices {
+			visibility:hidden;
+		}
 	</style>
 </head>
 <body>
 	<script src="latent_shapes.js"></script>
 	<script src="general_vae_model.js"></script>
     <script src="https://unpkg.com/brain.js"></script>
-	
+	<canvas id="theVoices" width="16" height="16"></canvas>
 	<canvas id="content" width="16" height="16" style="width:256px;height:256px;"></canvas>
 	Anti Alias <input type="checkbox" id="antialias">
 	<div class="section">
@@ -119,6 +122,18 @@
 		encoder.fromJSON(generalNet["encoder"]);
 		decoder.fromJSON(generalNet["decoder"]);
 
+		function latentify(imgSrc){
+			let canvas2 = $('theVoices');
+			let ctx2 = canvas2.getContext('2d');
+			if(typeof imgSrc == 'string'){
+				let imgData = new Image();
+				imgData.src = imgSrc;
+				imgData.onload = () => {
+					ctx2.drawImage(imgData,0,0,canvas2.width,canvas2.height);
+					ctx
+				}
+			}
+		}
 		//shitty
 		function noise1D(x) {
 			let X = Math.floor(x) & 255;
