@@ -15,7 +15,7 @@
 
   let soundSelectors = document.querySelectorAll('.soundboard-content');
 
-  for(let i=0;i<soundSelectors.length;i++){ //doing this loop to ensure that audero doesnt become a globally accessible= variable 
+  for(let i=0;i<soundSelectors.length;i++){ //doing this loop to ensure that audero doesnt become a globally accessible variable 
     soundSelectors[i].onclick = () => {
       let audero = new Audio(soundSelectors[i].audiosource);
       audero.play();
