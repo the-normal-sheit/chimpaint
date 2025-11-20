@@ -2,8 +2,23 @@
 <script>
   function $(a){return document.getElementById(a);}
   let sounds = {
-    "Charlie Kirk 1":"./aud/countingornotcounting.mp3",
-    "Thank You":"./aud/thankyou.mp3",
-    
+    "Charlie Kirk 1":{src:"./aud/countingornotcounting.mp3",thumb:"none"}
+    "Thank You":{src:"./aud/thankyou.mp3",thumb:"none"}
+    "Agarthan Anthem 1":{src:"./aud/landdownunder.agartha.mp3",thumb:"none"}
+  }
+
+  Object.keys(sounds).forEach(soundEffect => {
+    $('buttons').insertAdjacentHTML('beforeend',`
+      <button audiosource="${sounds[soundEffect].src}" class="soundboard-content">${soundEffect}</button>
+    `);
+  });
+
+  let soundSelectors = document.querySelectorAll('.soundboard-content');
+
+  for(let i=0;i<soundSelectors.length;i++){ //doing this loop to ensure that audero doesnt become a globally accessible= variable 
+    soundSelectors[i].onclick = () => {
+      let audero = new Audio(soundSelectors[i].audiosource);
+      audero.play();
+    }
   }
 </script>
