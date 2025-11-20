@@ -1,4 +1,4 @@
-<div style="max-width:90%;height:90%;padding:5px;" id="buttons"></div>
+<div style="max-width:90%;max-height:90%;overflow-x:hidden;overflow-y:scroll;padding:5px;" id="buttons"></div>
 <script>
   function $(a){return document.getElementById(a);}
   let sounds = {
@@ -8,18 +8,13 @@
   }
 
   Object.keys(sounds).forEach(soundEffect => {
+    let seed = Math.random();
     $('buttons').insertAdjacentHTML('beforeend',`
-      <button audiosource="${sounds[soundEffect].src}" class="soundboard-content">${soundEffect}</button>
+      <button id="${seed}" class="soundboard-content">${soundEffect}</button>
     `);
-  });
-
-  let soundSelectors = document.querySelectorAll('.soundboard-content');
-
-  for(let i=0;i<soundSelectors.length;i++){ //doing this loop to ensure that audero doesnt become a globally accessible variable 
-    console.log(soundSelectors[i]);
-    soundSelectors[i].onclick = () => {
-      let audero = new Audio(soundSelectors[i].audiosource);
+    $(seed).onclick = () => {
+      let audero = new Audio(sounds[soundEffect].src);
       audero.play();
     }
-  }
+  });
 </script>
