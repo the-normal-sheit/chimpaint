@@ -55,6 +55,8 @@
       if(player.xVelocity < 0)player.xVelocity+=player.accel/100;
       if(player.xVelocity > 0)player.xVelocity-=player.accel/100;
     }
+    let c = Math.random();
+    if(c > 0.96)netanyahoo();
     netanyahoos.forEach((netanyahooer,idx) => {
       netanyahooer.y+=netanyahooer.speed;
       drawSprite(sprites["netanyahu"],netanyahooer.x,netanyahooer.y,100,200);
