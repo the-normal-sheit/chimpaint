@@ -5,7 +5,8 @@
   let canvas = $('content');
   let ctx = canvas.getContext('2d');
   let sprites = {
-    "kirk":{src:"./kirk.jpeg",ready:false}
+    "kirk":{src:"./kirk.jpeg",ready:false},
+    "netanyahu":{src:"./netanyahoo.jpg",ready:false}
   };
   Object.keys(sprites).forEach(spriteName => {
     let sprite = sprites[spriteName];
@@ -27,6 +28,11 @@
 
   document.onkeydown = (e) => {if(Object.keys(keys).includes(e.key.toLowerCase()))keys[e.key.toLowerCase()]=true;}
   document.onkeyup = (e) => {if(Object.keys(keys).includes(e.key.toLowerCase()))keys[e.key.toLowerCase()]=false;}
+  let netanyahoos = [];
+  function netanyahoo(){
+    let thisNetanyahoo = {x:Math.floor(Math.random()*canvas.width),y:0,speed:Math.floor(Math.random()*2)+1};
+    netanyahoos.push(thisNetanyahoo);
+  }
   function worldLoop(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(keys.a && player.xVelocity > (0-player.maxSpeed))player.xVelocity-=player.accel/100;
@@ -35,6 +41,11 @@
       if(player.xVelocity < 0)player.xVelocity+=player.accel/100;
       if(player.xVelocity > 0)player.xVelocity-=player.accel/100;
     }
+    netanyahoos.forEach((netanyahooer,idx) => {
+      netanyahooer.y+=netanyahooer.speed;
+      drawSprite(sprites["netanyahu"],netanyahooer.x,netanyahooer.y,100,200);
+      if(netanyahooer.y > groundHeight)netanyahoos.splice(idx,1);
+    });
     player.x+=player.xVelocity;
     drawSprite(sprites["kirk"],player.x,player.y,100,100);
     setTimeout(worldLoop,10);
