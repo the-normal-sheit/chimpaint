@@ -16,20 +16,22 @@
       sprite.ready = true;
     }
   });
-  function colliding(rect1, rect2) {
-  // Check for no overlap on the X-axis
-  if (rect1.x + rect1.width < rect2.x || rect1.x > rect2.x + rect2.width) {
-    return false; // No collision
-  }
 
-  // Check for no overlap on the Y-axis
-  if (rect1.y + rect1.height < rect2.y || rect1.y > rect2.y + rect2.height) {
-    return false; // No collision
-  }
+  function colliding(div1, div2) {
+  const rect1 = div1;
+  const rect2 = div2;
 
-  // If both X and Y axes overlap, a collision exists
-  return true;
-  }
+  // Check for horizontal overlap
+  const horizontalOverlap = rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x;
+
+  // Check for vertical overlap
+  const verticalOverlap = rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
+
+  // Collision occurs if there is both horizontal and vertical overlap
+  return horizontalOverlap && verticalOverlap;
+}
+
+  
   function drawSprite(sprite,x,y,w,h){
     if(sprite.ready){
       ctx.drawImage(sprite.img,x,y,w,h);
