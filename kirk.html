@@ -28,8 +28,13 @@
   document.onkeydown = (e) => {if(Object.keys(keys).includes(e.key.toLowerCase()))keys[e.key.toLowerCase()]=true;}
   document.onkeyup = (e) => {if(Object.keys(keys).includes(e.key.toLowerCase()))keys[e.key.toLowerCase()]=false;}
   function worldLoop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     if(keys.a && player.xVelocity > (0-player.maxSpeed))player.xVelocity-=player.accel/100;
     if(keys.d && player.xVelocity < player.maxSpeed)player.xVelocity+=player.accel/100;
+    if(!keys.d && !keys.a){
+      if(player.xVelocity < 0)player.xVelocity+=player.accel/100;
+      if(player.xVelocity > 0)player.xVelocity-=player.accel/100;
+    }
     player.x+=player.xVelocity;
     drawSprite(sprites["kirk"],player.x,player.y,100,100);
     setTimeout(worldLoop,10);
