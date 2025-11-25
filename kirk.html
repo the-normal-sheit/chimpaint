@@ -73,7 +73,7 @@
     });
     
     player.x+=player.xVelocity;
-    drawSprite(sprites["kirk"],player.x,player.y,60,60);
+    drawSprite(sprites["kirk"],player.x,player.y,playerWidth,playerHeight);
     setTimeout(worldLoop,10);
   }
   worldLoop();
