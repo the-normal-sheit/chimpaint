@@ -59,11 +59,15 @@
     }
     let c = Math.random();
     if(c > 0.98)netanyahoo();
+    let playerWidth = 60;
+    let playerHeight = 60;
+    let netanyahooWidth = 80;
+    let netanyahooHeight = 160;
     netanyahoos.forEach((netanyahooer,idx) => {
       netanyahooer.y+=netanyahooer.speed;
-      drawSprite(sprites["netanyahu"],netanyahooer.x,netanyahooer.y,80,160);
+      drawSprite(sprites["netanyahu"],netanyahooer.x,netanyahooer.y,netanyahooWidth,netanyahooHeight);
       if(netanyahooer.y > groundHeight)netanyahoos.splice(idx,1);
-      if(colliding({x:player.x,y:player.y,width:100,height:100},{x:netanyahooer.x,y:netanyahooer.y,width:100,height:200}) ){
+      if(colliding({x:player.x,y:player.y,width:playerWidth,height:playerHeight},{x:netanyahooer.x,y:netanyahooer.y,width:netanyahooWidth,height:netanyahooHeight}) ){
         document.body.innerHTML = "<h1>GAME OVER</h1> <hr>refresh page to start over"
       }
     });
