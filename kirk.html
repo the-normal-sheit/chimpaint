@@ -61,7 +61,7 @@
     if(c > 0.98)netanyahoo();
     netanyahoos.forEach((netanyahooer,idx) => {
       netanyahooer.y+=netanyahooer.speed;
-      drawSprite(sprites["netanyahu"],netanyahooer.x,netanyahooer.y,100,200);
+      drawSprite(sprites["netanyahu"],netanyahooer.x,netanyahooer.y,80,160);
       if(netanyahooer.y > groundHeight)netanyahoos.splice(idx,1);
       if(colliding({x:player.x,y:player.y,width:100,height:100},{x:netanyahooer.x,y:netanyahooer.y,width:100,height:200}) ){
         document.body.innerHTML = "<h1>GAME OVER</h1> <hr>refresh page to start over"
