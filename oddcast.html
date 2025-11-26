@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Oddcast TTS Example</title>
+</head>
+<body>
+    <h1>Oddcast TTS Demo</h1>
+    <textarea id="ttsText" rows="4" cols="50" placeholder="Enter text here..."></textarea><br>
+    <button id="speakButton">Speak</button>
+    <audio id="audioPlayer" controls></audio>
+
+    <script>
+        // Replace with your actual Oddcast API key/parameters
+        const API_HOST = 'https://api.oddcast.com' // example host
+        const VOICE = 'paul' // voice parameter
+        const LOCALE = 'en_us'; // locale/language for TTS
+
+        document.getElementById('speakButton').addEventListener('click', () => {
+            const text = document.getElementById('ttsText').value.trim();
+            if (!text) return alert('Please enter some text to speak.');
+
+            // Construct the TTS API URL
+            const ttsUrl = `${API_HOST}/tts?voice=${VOICE}&locale=${LOCALE}&msg=${encodeURIComponent(text)}&format=mp3`;
+
+            // Use fetch to check the URL or you can directly assign to audio src
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = ttsUrl;
+            audioPlayer.play();
+        });
+    </script>
+</body>
+</html>
