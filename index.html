@@ -44,7 +44,7 @@
 </head>
 <body>
 	<script src="latent_shapes.js"></script>
-	<script src="general_vae_model.js"></script>
+	<script src="monky_model.js"></script>
     <script src="https://unpkg.com/brain.js"></script>
 	<div class="menu">
 		<img src="./src/logo.png" width="200" height="auto">
@@ -52,6 +52,9 @@
 	<canvas id="theVoices" width="16" height="16"></canvas>
 	<canvas id="content" width="16" height="16" style="width:256px;height:256px;"></canvas>
 	Anti Alias <input type="checkbox" id="antialias">
+	<br>
+	<button id="scene_start">🎞️</button><button id="scene_end">🟥</button>
+	<p id="framecount"></p>
 	<div class="section">
 		<h3>Motion</h3>
 		<div class="controls">
@@ -76,6 +79,8 @@
 			<button id="playMotion">▶ </button>
 			<button id="stopMotion">⏸ </button>
 			<button id="seedshift">→ Step</button>
+			||
+			<button id="scene_play">🎞️</button>
 			<label>FPS: <span id="fpsVal">24</span></label>
 			<input type="range" min="6" max="60" step="6" id="fps" value="24">
 		</div>
@@ -113,7 +118,7 @@
 			}
 			return result;
 		}
-
+        let frames = [];
 		let canvas = $('content');
 		let ctx = canvas.getContext('2d');
 		
@@ -143,10 +148,10 @@
 
 
 		let dimWeights = [
-			0.2, 0.2, 0.3, 0.3,//structure and composition
+			0.2, 0.2, 0.3, 0.2,//structure and composition
 			0.5, 0.5, 0.6, 0.6,//mid level features
-			0.8, 0.8, 0.9, 0.9,//fine details
-			1.0, 1.0, 1.0, 1.0//texture/noise 
+			0.5, 0.5, 0.5, 0.5,//fine details
+			0.7, 0.7, 0.7, 0.7//texture/noise 
 		];
 		
 		encoder.fromJSON(generalNet["encoder"]);
@@ -242,12 +247,64 @@
 			drawLatent(currentLatent);
 		}
 
-		function playAnimation() {
+		function playAnimation(a=false) {
 			if(!isPlaying) return;
 			stepMotion();
-			animationId = setTimeout(() => requestAnimationFrame(playAnimation), 1000/fps);
+			animationId = setTimeout(() => {if(a){frames.push(ctx.getImageData(0,0,canvas.width,canvas.height).data)}requestAnimationFrame(playAnimation)}, 1000/fps);
 		}
 		let aliased = false;
+		
+		function play(addScene=false){
+			isPlaying = true;
+			playAnimation(addScene);
+		}
+		function stop(){
+			isPlaying = false;
+			if(animationId) clearTimeout(animationId);
+		}
+		function recordScene(){
+			play(true);
+		}
+		function stopScene() {
+			frames = [];
+			stop();
+		}
+		function playScene(sceneQueue = 1){
+		if(frames.length === 0)return;
+			let frame = 0;
+
+let draw = () => {
+
+    let newData = ctx.getImageData(0, 0, canvas.width, canvas.height); 
+
+    
+
+    
+
+    
+
+for(let i=0;i<newData.data.length;i++){
+    newData.data[i] = frames[frame][i];
+}
+ctx.putImageData(newData,0,0);
+if(frame < frames.length - 1) {
+
+        frame++;
+
+        setTimeout(draw, 1000 / fps); 
+
+    }
+
+}
+
+draw();
+
+
+		}
+		setInterval(() => {$('framecount').innerHTML='Frames:'+frames.length;},1000);
+		$('scene_start').onclick = recordScene;
+		$('scene_end').onclick = stopScene;
+		$('scene_play').onclick = playScene;
 		$('antialias').onclick = () => {
 			aliased = !aliased
 			if(aliased)$('content').style.imageRendering = 'initial';
@@ -276,17 +333,10 @@
 		$('seedshift').onclick = () => {
 			stepMotion();
 		}
+		
+		$('playMotion').onclick = play;
 
-		$('playMotion').onclick = () => {
-			isPlaying = true;
-			playAnimation();
-		}
-
-		$('stopMotion').onclick = () => {
-			isPlaying = false;
-			if(animationId) clearTimeout(animationId);
-		}
-
+		$('stopMotion').onclick = stop;
 		$('seedran').onclick = () => {
 			let latent = [];
 			for(let i=0;i<16;i++){latent.push((Math.random() - 0.5) * 2)}
