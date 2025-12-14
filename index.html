@@ -44,9 +44,12 @@
 		.tuning-controls { display: flex; flex-direction: column; gap: 10px; }
 		.tuning-row { display: flex; gap: 10px; align-items: center; }
 		#tuneImageUrl { flex: 1; padding: 8px; }
+		#encodeImageUrl { flex: 1; padding: 8px; }
 		#tuneIterations { width: 100px; padding: 8px; }
 		#tuneButton { padding: 8px 12px; }
+		#encodeButton { padding: 8px 12px; }
 		#tuneButton:disabled { opacity: 0.5; cursor: not-allowed; }
+		#encodeButton:disabled { opacity: 0.5; cursor: not-allowed; }
 	</style>
 </head>
 <body>
@@ -105,7 +108,7 @@
 		</div>
 	</div>
 	
-	<div class="section">
+	<div class="section" style="display:none;">
 		<h3>Seeds</h3>
 		<button id="seedran">🎲 </button>
 		<button id="seedtroll">Troll</button>
@@ -117,11 +120,18 @@
 	</div>
 	
 	<div class="section">
-		<h3>Model Tuning</h3>
+		<h3>VAE Operations</h3>
 		<div class="tuning-controls">
 			<div class="tuning-row">
-				<label>Image URL:</label>
-				<input type="text" id="tuneImageUrl" placeholder="Enter local or external image URL">
+				<label>Image URL (Encode):</label>
+				<input type="text" id="encodeImageUrl" placeholder="Enter image URL to encode and display">
+				<button id="encodeButton">Encode & Display</button>
+			</div>
+			<small>⚠️ Encodes image through VAE and displays reconstruction on canvas</small>
+			<hr style="margin: 15px 0; border: 1px solid rgba(255,255,255,0.2);">
+			<div class="tuning-row">
+				<label>Image URL (Train):</label>
+				<input type="text" id="tuneImageUrl" placeholder="Enter image URL to train model">
 			</div>
 			<div class="tuning-row">
 				<label>Iterations:</label>
@@ -172,10 +182,10 @@
 
 
 		let dimWeights = [
-			0.2, 0.2, 0.3, 0.2,//structure and composition
-			0.5, 0.5, 0.6, 0.6,//mid level features
-			0.5, 0.5, 0.5, 0.5,//fine details
-			0.7, 0.7, 0.7, 0.7//texture/noise 
+			0.2, 0.2, 0.3, 0.2,
+			0.5, 0.5, 0.6, 0.6,
+			0.5, 0.5, 0.5, 0.5,
+			0.7, 0.7, 0.7, 0.7
 		];
 		
 		encoder.fromJSON(generalNet["encoder"]);
@@ -193,7 +203,7 @@
 				}
 			}
 		}
-		//shitty
+
 		function noise1D(x) {
 			let X = Math.floor(x) & 255;
 			x -= Math.floor(x);
@@ -228,12 +238,10 @@
 
 				switch(motionMode) {
 					case 'smooth':
-						//aids
 						acceleration = (Math.random() - 0.5) * frameChange * 0.15 * dimWeight;
 						break;
 
 					case 'organic':
-						//perlin
 						let noiseVal = noise1D(i * 0.5 + noiseOffset) * 2 - 1;
 						acceleration = noiseVal * frameChange * 0.2 * dimWeight;
 						break;
@@ -242,7 +250,6 @@
 						if(targetLatent) {
 							let diff = targetLatent[i] - currentLatent[i];
 							acceleration = diff * 0.08 * dimWeight;
-							//mcseasoning or however
 							acceleration += (Math.random() - 0.5) * frameChange * 0.05;
 						} else {
 							acceleration = (Math.random() - 0.5) * frameChange * 0.1 * dimWeight;
@@ -311,6 +318,55 @@
 			draw();
 		}
 
+		async function encodeAndDisplay() {
+			let imageUrl = $('encodeImageUrl').value.trim();
+
+			if (!imageUrl) {
+				alert('Please enter an image URL');
+				return;
+			}
+
+			$('encodeButton').disabled = true;
+			$('encodeButton').textContent = 'Encoding...';
+
+			try {
+				let img = new Image();
+				img.crossOrigin = 'anonymous';
+				
+				await new Promise((resolve, reject) => {
+					img.onload = resolve;
+					img.onerror = () => reject(new Error('Failed to load image'));
+					img.src = imageUrl;
+				});
+
+				let tempCanvas = $('theVoices');
+				let tempCtx = tempCanvas.getContext('2d');
+				tempCtx.drawImage(img, 0, 0, 16, 16);
+				
+				let imageData = tempCtx.getImageData(0, 0, 16, 16);
+				let pixels = [];
+				
+				for (let i = 0; i < imageData.data.length; i += 4) {
+					pixels.push(imageData.data[i] / 255);
+					pixels.push(imageData.data[i + 1] / 255);
+					pixels.push(imageData.data[i + 2] / 255);
+				}
+
+				let latent = arrayify(encoder.run(pixels));
+
+				currentLatent = latent;
+				velocity.fill(0);
+				targetLatent = null;
+				drawLatent(currentLatent);
+
+			} catch (error) {
+				console.error('Encoding error:', error);
+				alert('Error encoding image: ' + error.message);
+			} finally {
+				$('encodeButton').disabled = false;
+				$('encodeButton').textContent = 'Encode & Display';
+			}
+		}
 		
 		async function tuneModel() {
 			let imageUrl = $('tuneImageUrl').value.trim();
@@ -349,9 +405,9 @@
 				let pixels = [];
 				
 				for (let i = 0; i < imageData.data.length; i += 4) {
-					pixels.push(imageData.data[i] / 255);     // R
-					pixels.push(imageData.data[i + 1] / 255); // G
-					pixels.push(imageData.data[i + 2] / 255); // B
+					pixels.push(imageData.data[i] / 255);
+					pixels.push(imageData.data[i + 1] / 255);
+					pixels.push(imageData.data[i + 2] / 255);
 				}
 
 				console.log('Image loaded, pixel data length:', pixels.length);
@@ -397,7 +453,6 @@
 
 				console.log('Training complete!');
 
-				// Update current latent and display
 				currentLatent = latent;
 				velocity.fill(0);
 				drawLatent(currentLatent);
@@ -418,6 +473,7 @@
 		$('scene_end').onclick = stopScene;
 		$('scene_play').onclick = playScene;
 		$('tuneButton').onclick = tuneModel;
+		$('encodeButton').onclick = encodeAndDisplay;
 
 		$('antialias').onclick = () => {
 			aliased = !aliased
