@@ -50,6 +50,68 @@
 		#encodeButton { padding: 8px 12px; }
 		#tuneButton:disabled { opacity: 0.5; cursor: not-allowed; }
 		#encodeButton:disabled { opacity: 0.5; cursor: not-allowed; }
+		.modal {
+			display: none;
+			position: fixed;
+			z-index: 1000;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0,0,0,0.7);
+		}
+		.modal-content {
+			background: linear-gradient(0deg,rgba(171, 205, 217, 1) 0%, rgba(143, 159, 161, 1) 13%, rgba(109, 130, 130, 1) 23%, rgba(93, 108, 115, 1) 34%, rgba(157, 172, 181, 1) 84%, rgba(230, 237, 237, 1) 100%);
+			margin: 10% auto;
+			padding: 20px;
+			border: 2px solid #333;
+			border-radius: 8px;
+			width: 500px;
+			max-width: 90%;
+		}
+		.modal-content h3 {
+			margin-top: 0;
+		}
+		.modal-content textarea {
+			width: 100%;
+			height: 80px;
+			padding: 8px;
+			margin: 10px 0;
+			box-sizing: border-box;
+		}
+		.modal-content select {
+			width: 100%;
+			padding: 8px;
+			margin: 10px 0;
+		}
+		.modal-buttons {
+			display: flex;
+			gap: 10px;
+			justify-content: flex-end;
+			margin-top: 15px;
+		}
+		.tts-cue-list {
+			margin-top: 15px;
+			max-height: 200px;
+			overflow-y: auto;
+			border: 1px solid rgba(0,0,0,0.3);
+			padding: 10px;
+			background: rgba(255,255,255,0.1);
+			border-radius: 4px;
+		}
+		.tts-cue-item {
+			padding: 8px;
+			margin: 5px 0;
+			background: rgba(255,255,255,0.2);
+			border-radius: 4px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+		.tts-cue-item button {
+			padding: 4px 8px;
+			margin: 0;
+		}
 	</style>
 </head>
 <body>
@@ -70,6 +132,28 @@
 	<button id="scene_tts">💬</button>
 	<br>
 	<p id="framecount"></p>
+	
+	<div id="ttsModal" class="modal">
+		<div class="modal-content">
+			<h3>Add TTS Dialogue</h3>
+			<label>Text to Speak:</label>
+			<textarea id="ttsText" placeholder="Enter dialogue here..."></textarea>
+			<label>Voice:</label>
+			<select id="ttsVoice">
+				<option value="">Default</option>
+			</select>
+			<label>Frame: <span id="ttsFrameDisplay">0</span></label>
+			<div class="modal-buttons">
+				<button id="ttsCancel">Cancel</button>
+				<button id="ttsAdd">Add Cue</button>
+			</div>
+			<div class="tts-cue-list">
+				<strong>TTS Cues:</strong>
+				<div id="ttsCueList"></div>
+			</div>
+		</div>
+	</div>
+
 	<div class="section">
 		<h3>Motion</h3>
 		<div class="controls">
@@ -158,6 +242,8 @@
 			return result;
 		}
         let frames = [];
+		let ttsCues = [];
+		let availableVoices = [];
 		let canvas = $('content');
 		let ctx = canvas.getContext('2d');
 		
@@ -195,6 +281,46 @@
 		
 		encoder.fromJSON(generalNet["encoder"]);
 		decoder.fromJSON(generalNet["decoder"]);
+
+		function loadVoices() {
+			availableVoices = speechSynthesis.getVoices();
+			let voiceSelect = $('ttsVoice');
+			voiceSelect.innerHTML = '<option value="">Default</option>';
+			availableVoices.forEach((voice, index) => {
+				let option = document.createElement('option');
+				option.value = index;
+				option.textContent = voice.name + ' (' + voice.lang + ')';
+				voiceSelect.appendChild(option);
+			});
+		}
+
+		if (speechSynthesis.onvoiceschanged !== undefined) {
+			speechSynthesis.onvoiceschanged = loadVoices;
+		}
+		loadVoices();
+
+		function updateTTSCueList() {
+			let cueList = $('ttsCueList');
+			if(ttsCues.length === 0) {
+				cueList.innerHTML = '<em>No cues added yet</em>';
+				return;
+			}
+			cueList.innerHTML = '';
+			ttsCues.forEach((cue, index) => {
+				let item = document.createElement('div');
+				item.className = 'tts-cue-item';
+				item.innerHTML = `
+					<span><strong>Frame ${cue.frame}:</strong> "${cue.text.substring(0, 30)}${cue.text.length > 30 ? '...' : ''}"</span>
+					<button onclick="removeTTSCue(${index})">Remove</button>
+				`;
+				cueList.appendChild(item);
+			});
+		}
+
+		window.removeTTSCue = function(index) {
+			ttsCues.splice(index, 1);
+			updateTTSCueList();
+		}
 
 		function latentify(imgSrc){
 			let canvas2 = $('theVoices');
@@ -283,6 +409,7 @@
 			drawLatent(currentLatent);
 		}
 		let recordingVideo = false;
+		let globalAudio = new Audio();
 		function playAnimation() {
 			if(!isPlaying) return;
 			stepMotion();
@@ -307,10 +434,14 @@
 		}
 		function trashScene(){
 			frames = [];
+			ttsCues = [];
+			updateTTSCueList();
 		}
-		function playScene(sceneQueue = 1){
+		function playScene(sceneQueue = 1,audioSrc=''){
+			globalAudio = new Audio(audioSrc);
 			if(frames.length === 0)return;
 			let frame = 0;
+			let triggeredCues = new Set();
 
 			let draw = () => {
 				let newData = ctx.getImageData(0, 0, canvas.width, canvas.height); 
@@ -318,9 +449,23 @@
 					newData.data[i] = frames[frame][i];
 				}
 				ctx.putImageData(newData,0,0);
+
+				ttsCues.forEach((cue, index) => {
+					if(cue.frame === frame && !triggeredCues.has(index)) {
+						let utterance = new SpeechSynthesisUtterance(cue.text);
+						if(cue.voiceIndex !== '' && availableVoices[cue.voiceIndex]) {
+							utterance.voice = availableVoices[cue.voiceIndex];
+						}
+						speechSynthesis.speak(utterance);
+						triggeredCues.add(index);
+					}
+				});
+
 				if(frame < frames.length - 1) {
 					frame++;
 					setTimeout(draw, 1000 / fps); 
+				} else {
+					globalAudio.pause()
 				}
 			}
 			draw();
@@ -477,7 +622,7 @@
 		}
 
 		setInterval(() => {
-		$('framecount').innerHTML='Saved rames: '+frames.length;
+		$('framecount').innerHTML='Saved frames: '+frames.length+' | TTS Cues: '+ttsCues.length;
 		},1000);
 		$('scene_start').onclick = () => {recordScene();};
 		$('scene_end').onclick = () => {stopScene();};
@@ -485,6 +630,33 @@
 		$('scene_trash').onclick = () => {trashScene();};
 		$('tuneButton').onclick = tuneModel;
 		$('encodeButton').onclick = encodeAndDisplay;
+
+		$('scene_tts').onclick = () => {
+			$('ttsFrameDisplay').textContent = frames.length;
+			$('ttsModal').style.display = 'block';
+			updateTTSCueList();
+		};
+
+		$('ttsCancel').onclick = () => {
+			$('ttsModal').style.display = 'none';
+			$('ttsText').value = '';
+		};
+
+		$('ttsAdd').onclick = () => {
+			let text = $('ttsText').value.trim();
+			if(!text) {
+				alert('Please enter some text');
+				return;
+			}
+			ttsCues.push({
+				frame: frames.length,
+				text: text,
+				voiceIndex: $('ttsVoice').value
+			});
+			$('ttsText').value = '';
+			updateTTSCueList();
+			alert('TTS cue added at frame ' + frames.length);
+		};
 
 		$('antialias').onclick = () => {
 			aliased = !aliased
