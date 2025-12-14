@@ -63,7 +63,10 @@
 	<canvas id="content" width="16" height="16" style="width:256px;height:256px;"></canvas>
 	Anti Alias <input type="checkbox" id="antialias">
 	<br>
-	<button id="scene_start">🎞️</button><button id="scene_end">🟥</button>
+	<button id="scene_start">🎞️</button>
+	<button id="scene_end">🟥</button>
+	<button id="scene_trash">🗑️</button>
+	<br>
 	<p id="framecount"></p>
 	<div class="section">
 		<h3>Motion</h3>
@@ -277,28 +280,31 @@
 
 			drawLatent(currentLatent);
 		}
-
-		function playAnimation(a=false) {
+		let recordingVideo = false;
+		function playAnimation() {
 			if(!isPlaying) return;
 			stepMotion();
-			animationId = setTimeout(() => {if(a){frames.push(ctx.getImageData(0,0,canvas.width,canvas.height).data)}requestAnimationFrame(playAnimation)}, 1000/fps);
+			animationId = setTimeout(() => {if(recordingVideo==true){frames.push(ctx.getImageData(0,0,canvas.width,canvas.height).data)}requestAnimationFrame(playAnimation)}, 1000/fps);
 		}
 		let aliased = false;
 		
-		function play(addScene=false){
+		function play(){
 			isPlaying = true;
-			playAnimation(addScene);
+			playAnimation();
 		}
 		function stop(){
 			isPlaying = false;
 			if(animationId) clearTimeout(animationId);
 		}
 		function recordScene(){
-			play(true);
+			recordingVideo=true;
 		}
 		function stopScene() {
-			frames = [];
+			recordingVideo=false;
 			stop();
+		}
+		function trashScene(){
+			frames = [];
 		}
 		function playScene(sceneQueue = 1){
 			if(frames.length === 0)return;
@@ -468,10 +474,13 @@
 			}
 		}
 
-		setInterval(() => {$('framecount').innerHTML='Frames:'+frames.length;},1000);
-		$('scene_start').onclick = recordScene;
-		$('scene_end').onclick = stopScene;
-		$('scene_play').onclick = playScene;
+		setInterval(() => {
+		$('framecount').innerHTML='Saved rames: '+frames.length;
+		},1000);
+		$('scene_start').onclick = () => {recordScene();};
+		$('scene_end').onclick = () => {stopScene();};
+		$('scene_play').onclick = () => {playScene();};
+		$('scene_trash').onclick = () => {trashScene();};
 		$('tuneButton').onclick = tuneModel;
 		$('encodeButton').onclick = encodeAndDisplay;
 
@@ -504,9 +513,9 @@
 			stepMotion();
 		}
 		
-		$('playMotion').onclick = play;
+		$('playMotion').onclick = () => {play();};
 
-		$('stopMotion').onclick = stop;
+		$('stopMotion').onclick = () => {stop();};
 		$('seedran').onclick = () => {
 			let latent = [];
 			for(let i=0;i<16;i++){latent.push((Math.random() - 0.5) * 2)}
