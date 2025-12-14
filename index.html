@@ -40,6 +40,12 @@
 			height:200px;
 			padding:5px;
 		}
+		.tuning-controls { display: flex; flex-direction: column; gap: 10px; }
+		.tuning-row { display: flex; gap: 10px; align-items: center; }
+		#tuneImageUrl { flex: 1; padding: 8px; }
+		#tuneIterations { width: 100px; padding: 8px; }
+		#tuneButton { padding: 8px 12px; }
+		#tuneButton:disabled { opacity: 0.5; cursor: not-allowed; }
 	</style>
 </head>
 <body>
@@ -86,6 +92,7 @@
 		</div>
 	</div>
 
+	
 	<div class="section">
 		<h3>Modes</h3>
 		<button id="modeSmooth">Smooth</button>
@@ -96,7 +103,7 @@
 			<small>Current Mode: <strong id="currentMode">Smooth</strong></small>
 		</div>
 	</div>
-
+	
 	<div class="section">
 		<h3>Seeds</h3>
 		<button id="seedran">🎲 </button>
@@ -106,6 +113,22 @@
 		<button id="seedmsn">MSN 1</button>
 		<button id="seedsmiley">Smiley Icon</button>
 		<button id="seedface1">Face 1</button>
+	</div>
+	
+	<div class="section">
+		<h3>Model Tuning</h3>
+		<div class="tuning-controls">
+			<div class="tuning-row">
+				<label>Image URL:</label>
+				<input type="text" id="tuneImageUrl" placeholder="Enter local or external image URL">
+			</div>
+			<div class="tuning-row">
+				<label>Iterations:</label>
+				<input type="number" id="tuneIterations" value="100" min="10" max="10000" step="10">
+				<button id="tuneButton">Train Model</button>
+			</div>
+			<small>⚠️ Training will freeze the UI. Open devtools console (F12) to see progress.</small>
+		</div>
 	</div>
 
 	<script defer>
@@ -270,41 +293,131 @@
 			stop();
 		}
 		function playScene(sceneQueue = 1){
-		if(frames.length === 0)return;
+			if(frames.length === 0)return;
 			let frame = 0;
 
-let draw = () => {
-
-    let newData = ctx.getImageData(0, 0, canvas.width, canvas.height); 
-
-    
-
-    
-
-    
-
-for(let i=0;i<newData.data.length;i++){
-    newData.data[i] = frames[frame][i];
-}
-ctx.putImageData(newData,0,0);
-if(frame < frames.length - 1) {
-
-        frame++;
-
-        setTimeout(draw, 1000 / fps); 
-
-    }
-
-}
-
-draw();
-
-
+			let draw = () => {
+				let newData = ctx.getImageData(0, 0, canvas.width, canvas.height); 
+				for(let i=0;i<newData.data.length;i++){
+					newData.data[i] = frames[frame][i];
+				}
+				ctx.putImageData(newData,0,0);
+				if(frame < frames.length - 1) {
+					frame++;
+					setTimeout(draw, 1000 / fps); 
+				}
+			}
+			draw();
 		}
+
+		
+		async function tuneModel() {
+			let imageUrl = $('tuneImageUrl').value.trim();
+			let iterations = parseInt($('tuneIterations').value);
+
+			if (!imageUrl) {
+				alert('Please enter an image URL');
+				return;
+			}
+
+			if (iterations < 10 || iterations > 10000) {
+				alert('Iterations must be between 10 and 10000');
+				return;
+			}
+
+			alert('Training started, open devtools console (F12) to see progress. The UI will freeze during training.');
+
+			$('tuneButton').disabled = true;
+			$('tuneButton').textContent = 'Training...';
+
+			try {
+				let img = new Image();
+				img.crossOrigin = 'anonymous';
+				
+				await new Promise((resolve, reject) => {
+					img.onload = resolve;
+					img.onerror = () => reject(new Error('Failed to load image'));
+					img.src = imageUrl;
+				});
+
+				let tempCanvas = $('theVoices');
+				let tempCtx = tempCanvas.getContext('2d');
+				tempCtx.drawImage(img, 0, 0, 16, 16);
+				
+				let imageData = tempCtx.getImageData(0, 0, 16, 16);
+				let pixels = [];
+				
+				for (let i = 0; i < imageData.data.length; i += 4) {
+					pixels.push(imageData.data[i] / 255);     // R
+					pixels.push(imageData.data[i + 1] / 255); // G
+					pixels.push(imageData.data[i + 2] / 255); // B
+				}
+
+				console.log('Image loaded, pixel data length:', pixels.length);
+				console.log('Starting training with', iterations, 'iterations');
+
+				let encoderIterations = Math.floor(iterations * 0.6);
+				let decoderIterations = iterations - encoderIterations;
+
+				let encoderTraining = [{ input: pixels, output: currentLatent.length ? currentLatent : new Array(16).fill(0) }];
+				
+				console.log('Training encoder for', encoderIterations, 'iterations...');
+				encoder.train(encoderTraining, {
+					iterations: encoderIterations,
+					errorThresh: 0.000001,
+					log: true,
+					logPeriod: 10,
+					errorFunction: (target, output) => {
+						var reconstructionLoss = target.reduce((sum, val, i) => 
+							sum + Math.pow(val - output[i], 2), 0) / target.length;
+						
+						var mu = output.slice(0, 2);
+						var klDivergence = -0.5 * mu.reduce((sum, m) => 
+							sum + (1 + Math.log(0.01) - m * m - 0.01), 0);
+						
+						var beta = 0.1;
+						return reconstructionLoss + beta * klDivergence;
+					}
+				});
+
+				
+				let latent = arrayify(encoder.run(pixels));
+				console.log('Latent representation:', latent);
+
+				let decoderTraining = [{ input: latent, output: pixels }];
+
+				console.log('Training decoder for', decoderIterations, 'iterations...');
+				decoder.train(decoderTraining, {
+					iterations: decoderIterations,
+					errorThresh: 0.00001,
+					log: true,
+					logPeriod: 10
+				});
+
+				console.log('Training complete!');
+
+				// Update current latent and display
+				currentLatent = latent;
+				velocity.fill(0);
+				drawLatent(currentLatent);
+
+				alert('Training complete! Model has been tuned on your image.');
+
+			} catch (error) {
+				console.error('Training error:', error);
+				alert('Error during training: ' + error.message);
+			} finally {
+				$('tuneButton').disabled = false;
+				$('tuneButton').textContent = 'Train Model';
+			}
+		}
+
 		setInterval(() => {$('framecount').innerHTML='Frames:'+frames.length;},1000);
 		$('scene_start').onclick = recordScene;
 		$('scene_end').onclick = stopScene;
 		$('scene_play').onclick = playScene;
+		$('tuneButton').onclick = tuneModel;
+
 		$('antialias').onclick = () => {
 			aliased = !aliased
 			if(aliased)$('content').style.imageRendering = 'initial';
@@ -365,26 +478,26 @@ draw();
 			targetLatent = null;
 			drawLatent(currentLatent);
 		}
-$('seedbia').onclick=()=>{
-		currentLatent = [...Latents["bia_1"]];
-		velocity.fill(0);
-		targetLatent = null;
-		drawLatent(currentLatent);
-	}
+		$('seedbia').onclick=()=>{
+			currentLatent = [...Latents["bia_1"]];
+			velocity.fill(0);
+			targetLatent = null;
+			drawLatent(currentLatent);
+		}
 
-	$('seedmsn').onclick=()=>{
-		currentLatent = [...Latents["msn_1"]];
-		velocity.fill(0);
-		targetLatent = null;
-		drawLatent(currentLatent);
-	}
+		$('seedmsn').onclick=()=>{
+			currentLatent = [...Latents["msn_1"]];
+			velocity.fill(0);
+			targetLatent = null;
+			drawLatent(currentLatent);
+		}
 
-	$('seedsmiley').onclick=()=>{
-		currentLatent = [...Latents["smiley_icon"]];
-		velocity.fill(0);
-		targetLatent = null;
-		drawLatent(currentLatent);
-	}
+		$('seedsmiley').onclick=()=>{
+			currentLatent = [...Latents["smiley_icon"]];
+			velocity.fill(0);
+			targetLatent = null;
+			drawLatent(currentLatent);
+		}
 
 		$('modeSmooth').onclick = () => {
 			motionMode = 'smooth';
