@@ -439,6 +439,7 @@
 		}
 		function playScene(sceneQueue = 1,audioSrc=''){
 			globalAudio = new Audio(audioSrc);
+			globalAudio.play();
 			if(frames.length === 0)return;
 			let frame = 0;
 			let triggeredCues = new Set();
